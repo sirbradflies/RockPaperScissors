@@ -8,11 +8,13 @@ import rpsbot
 from naivebot import NaiveBot
 from randombot import RandomBot
 from frequency import FrequencyBot
+from bayesbot import BayesBot
 
 BOTS = {
     "random": RandomBot,
     "naive": NaiveBot,
-    "frequency": FrequencyBot
+    "frequency": FrequencyBot,
+    "bayes": BayesBot
 }
 
 
