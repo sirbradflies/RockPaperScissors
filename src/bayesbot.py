@@ -13,22 +13,24 @@ from rpsbot import RPSBot, Play
 class BayesBot(RPSBot):
     def __init__(self, memory=10):
         self.memory = memory
-        self.last_opponent_plays = []
-        self.last_own_play = []
+        self.plays = pd.DataFrame()
         self.model = MultinomialNB()
-        self.plays = pd.DataFrame(columns=['opponent', 'own'])
-        self.last_own_play = None
 
     def next_play(self, last_opponent_play: Play = None) -> Play:
+        round = len(self.plays)
         if last_opponent_play:
-            self.plays.loc[len(self.plays)] = [last_opponent_play.value, self.last_own_play.value]
-        if len(self.plays) > self.memory+1:
-            X_train = self.plays[-self.memory-1:-1]
-            y_train = self.plays[-self.memory:]['opponent']
-            self.model.fit(X_train, y_train)
-            X_pred = self.plays[-self.memory:]
+            self.plays.loc[round - 1, "opponent"] = last_opponent_play.value
+
+        if round > self.memory:
+            X = pd.concat([self.plays.shift(l).add_suffix(f"_{l}")
+                           for l in range(self.memory)], axis=1).dropna()
+            y = X["opponent_0"].shift(-1).dropna()
+            clean_idx = X.index.intersection(y.index)
+            self.model.fit(X.loc[clean_idx], y.loc[clean_idx])
+
+            X_pred = X.iloc[-1:]
             next_play = rpsbot.LOSES[Play(self.model.predict(X_pred)[0])]
         else:
             next_play = random.choice(list(Play))
-        self.last_own_play = next_play
+        self.plays.loc[round, "self"] = next_play.value
         return next_play
